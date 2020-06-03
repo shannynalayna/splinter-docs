@@ -21,6 +21,12 @@ When Alice clicks Log in, the Acme Gameroom UI hashes the password, then sends
 an authorization request to the Acme Gameroom daemon, gameroomd. The Gameroom
 daemon then makes several requests to the Biome REST API to verify the user.
 
+<!--
+
+
+This is all comments 
+
+-->
 The following request is sent to Acme's Gameroom daemon:
 
 ``` json
