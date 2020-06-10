@@ -17,77 +17,52 @@
 
 ## Biome
 
-Biome is a module in libsplinter containing several submodules that provide
-support for user management, user credential management, and private key
-management.
+{{site.data.glossary.biome}}
 
 ## Canopy
 
-Application interface for Splinter that can provide apps dynamically.
-Canopy is a distributed-application UI framework that dynamically loads saplings
-(application UI components) based on circuit configuration, user permissions,
-and enterprise requirements.
+{{site.data.glossary.canopy}}
 
 ## circuit
 
-Virtual network within the broader Splinter network that safely and securely
-enforces privacy scope boundaries. A circuit defines the scope and visibility
-domains for two or more connected organizations.
+{{site.data.glossary.circuit}}
 
 ## consensus
 
-Mechanism for ensuring agreement between Splinter services and nodes. Splinter
-currently supports two-phase commit consensus, a basic consensus algorithm that
-requires all participating parties to agree. (Other algorithms are planned for
-the future.)
+{{site.data.glossary.consensus}}
 
 ## node
 
-Foundational runtime software that allows an organization to participate
-in the network.
+{{site.data.glossary.node}}
 
 ## sapling
 
-Plug-in app for Canopy that can customize the UI, access Splinter or external
-functionality, or communicate with back-end platforms and software.
-Splinter includes a growing set of reusable saplings for common functionality
-and interfaces with related products.
+{{site.data.glossary.sapling}}
 
 ## Sawtooth Sabre
 
-Smart contract engine: A distributed application that implements on-chain smart
-contracts that can be executed in a WebAssembly virtual machine.
+{{site.data.glossary.sawtooth_sabre}}
 
 ## scabbard
 
-Splinter service that runs Sawtooth Sabre smart contracts across nodes,
-coordinated with consensus.
+{{site.data.glossary.scabbard}}
 
 ## service
 
-Endpoint within a circuit that sends and receives private messages.
+{{site.data.glossary.service}}
 
 ## shared state
 
-Distributed database that is visible only to the services within a circuit.
-Shared state is updated by smart contracts.
+{{site.data.glossary.shared_state}}
 
 ## smart contract
 
-Business logic that processes transactions. Runtime deployment of smart
-contracts by the scabbard service means no need to upgrade the Splinter software
-stack to add business logic. Sandboxed WebAssembly smart contracts keep the
-network safe and ensure determinism.
+{{site.data.glossary.smart_contract}}
 
 ## splinterd
 
-Splinter daemon that handles internal functionality such as circuit creation and
-management, consensus, and service coordination.
+{{site.data.glossary.splinterd}}
 
 ## state delta export
 
-Mechanism that provides changes to shared state as "state deltas" (state-change
-updates from Splinter as a result of processed transactions).
-Applications can subscribe to these changes to get current information that can
-be stored in a local database.
-
+{{site.data.glossary.state_delta_export}}
