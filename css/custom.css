@@ -446,3 +446,11 @@ h3 {
 .content-wrapper {
     min-height: calc(100vh - 175px);
 }
+
+.glossary-header {
+    color: var(--splinter-fuchsia);
+}
+
+.glossary-definition {
+    color: var(--text-color);
+}
