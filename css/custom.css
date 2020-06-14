@@ -446,3 +446,16 @@ h3 {
 .content-wrapper {
     min-height: calc(100vh - 175px);
 }
+
+.script-container {
+    display: inline-block;
+}
+
+.script-label {
+    text-align: center;
+}
+
+.script-quote {
+    padding: 10px;
+    margin-left: 50px;
+}
