@@ -2901,3 +2901,210 @@ docs/0.4/examples/gameroom/walkthrough/images/scene6_3.png %}
 
 When Alice clicks on the notification, she sees the details page for the new
 gameroom. (See [Behind Scene 4, Bob Checks his Notifications](#i-4-behind-scene-4-bob-checks-his-notification))
+
+## Act 2: Alice and Bob Play XO
+
+### Scene 1: Alice creates a new XO game
+
+Alice returns from lunch and unlocks her computer. The GAMEROOM TAB is still
+displayed.
+
+![]({% link
+docs/0.4/examples/gameroom/walkthrough/images/act2_scene1_1.png %}
+"Gameroom tab")
+
+Alice wants to play an XO game. She clicks *New Game*. Alice sees the NEW GAME
+DIALOG.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene1_2.png %}
+"New game modal")
+
+Alice enters *“alice_vs_bob”* as the game name. She clicks the SEND BUTTON.
+
+The Gameroom application starts creating the game. Alice sees a new
+*"alice_vs_bob"* entry with a SPINNER and the message "CREATING GAME".
+
+![]({% link
+docs/0.4/examples/gameroom/walkthrough/images/act2_scene1_3.png %}
+"Creating Acme + Bubba game")
+
+A short period of time passes. When the game has been fully created, Alice sees
+a blank game board and the message *"JOIN GAME"*.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene1_4.png %}
+"Join Acme + Bubba game")
+
+### Scene 2: Alice makes the first move
+
+Alice clicks JOIN GAME on the newly created game. The *"alice_vs_bob"* game
+board appears.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene2_1.png %}
+"'alice_vs_bob' game board")
+
+Alice stretches her hands and rubs her neck, preparing for her first move.
+
+She clicks the center spot on the board.
+
+While the Gameroom application processes her move, Alice sees a spinner in the
+center spot.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene2_2.png %}
+"Alice's move processing the game board")
+
+Time passes. The spinner disappears and an X appears in its place. Alice's
+first move has been accepted.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene2_3.png %}
+"Alice's move on the game board")
+
+Now she must wait for Bob’s first move.
+
+### Scene 3: Bob takes a turn
+
+Eventually, Bob sees a RED NUMBER 1 on his bell icon, which means that he has a
+notification.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene3_1.png %}
+"Bob's new game notification")
+
+Bob clicks on the bell icon. He sees that the game *alice_vs_bob* is available
+in the *Acme + Bubba* gameroom.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene3_2.png %}
+"Bob's notification details")
+
+He clicks on the notification text. The *alice_vs_bob* game board is displayed.
+
+Bob sees that Alice has taken the center space.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene3_3.png %}
+"Bob's decision")
+
+Muttering to himself, Bob makes his first move: he takes the top right corner.
+
+While the Gameroom application processes his move, Bob sees a spinner in that
+space.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene3_4.png %}
+"Bob's move processing on the game board")
+
+Soon, the spinner disappears. Bob's first move has been accepted.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene3_5.png %}
+"Bob's move on the game board")
+
+The game continues, slowly, as Alice and Bob carefully analyze each move.
+
+### Scene 4: Alice wins the game
+
+It's the last move of the game.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene4_1.png %}
+"The final move may be taken")
+
+Alice is biting her nails. Bob wipes his forehead.
+
+Alice clicks on the winning spot. Suspense builds while she watches the spinner.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene4_2.png %}
+"Alice makes her move")
+
+The spinner disappears. Alice wins the game!
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene4_3.png %}
+"Alice wins the game")
+
+Bob sees Alice's winning move as a row of red Xs.
+
+![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/act2_scene4_4.png %}
+"Bob loses the game")
+
+### Scene 5: The triumph of Alice
+
+In Alice's office, we hear CHEERS IN THE BACKGROUND.
+
+Alice turns around and sees a crowd of co-workers who are celebrating her win.
+
+### Scene 5: The tragedy of Bob
+
+In Bob's office, there's a loud crash, then a scream. CUT TO BLACK.
+
+## Act 3: Alice creates gamerooms with Yoda and Zixi
+
+### Scene 1: The ketchup packet
+
+[The scene starts at the cliffhanger ending of ACT 2.]
+
+<p class="gameroom-script-label">NARRATOR (voice-over)</p>
+
+<div class="gameroom-script-container">
+<p><em> Bob is furious that he lost the XO game to Alice. He stands up -- jumps
+up, really -- and puts his foot on a KETCHUP PACKET on the floor. He stumbles
+into a MOBILE WHITEBOARD, grabbing the whiteboard as he falls and pulling it on
+top of himself. The whiteboard breaks his nose and his computer. </em></p>
+</div>
+
+<p>Bob screams in pain.</p>
+
+### Scene 2: Alice and Yoda set up a gameroom
+
+<p class="gameroom-script-label">NARRATOR (voice-over)</p>
+
+<div class="gameroom-script-container">
+<p><em> Alice doesn't want to stop playing tic tac toe. She asks her friend
+Yoda, the VP of Yoyodyne Systems, to set up the Gameroom application at his
+company. They start a competitive series of XO games in the "Alice vs Yoda"
+gameroom, playing from early morning until when Yoda leaves work. </em></p>
+</div>
+
+<p>IMAGE: Alice, hunched over her computer at sunset. CUT TO BLACK.</p>
+
+### Scene 3: Alice sets up a gameroom with Zixi
+
+<p class="gameroom-script-label">NARRATOR (voice-over) </p>
+
+<div class="gameroom-script-container">
+<p><em> Alice decides that she needs more gamerooms. She arranges for Zixi, who
+works at Zymogen Industries, to install the Gameroom application and join the
+"Alice vs Zixi" gameroom. They play XO from dinner time until midnight. Zixi
+has no idea that Alice has multiple gamerooms. She can only sees the "Alice vs
+Zixi" gameroom in her view of the Gameroom application. </em></p>
+</div>
+
+<p>FADE OUT: Alice, hunched over her computer in a dark office.</p>
+
+### Scene 4: Alice's addiction
+
+<p>FADE IN: Alice, hunched over her computer at dawn.</p>
+
+<p class="gameroom-script-label"> NARRATOR (voice-over) </p>
+
+<div class="gameroom-script-container">
+<p><em> Alice can't stop playing XO. She sets up gamerooms with people all over
+the globe. She lives in her office. She starts stealing other people's lunches
+from the office refrigerator. She drinks vending machine coffee at all hours.
+She doesn't sleep.</em></p>
+
+<p><em> Finally, her co-workers stage an intervention. Alice goes to an
+addiction rehab center for a month. </em></p>
+
+<p><em> When Alice returns to work, she never plays online games. She also has
+an uncontrollable twitch when she sees an X. </em></p>
+</div>
+
+<p>CUT TO BLACK.</p>
