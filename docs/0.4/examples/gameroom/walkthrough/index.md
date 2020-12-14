@@ -3044,6 +3044,823 @@ Alice turns around and sees a crowd of co-workers who are celebrating her win.
 
 In Bob's office, there's a loud crash, then a scream. CUT TO BLACK.
 
+## Behind the Scenes: A Look at Act II, Alice and Bob Play XO
+
+This section describes what really happens during Act II. Although the actions
+of creating a game and making moves are different, the underlying functions are
+similar to the process of creating a gameroom.
+
+### II-1. Behind scene 1: Alice creates a new XO game
+
+In Scene 1, Alice uses the Gameroom UI to create a new game named
+`alice_vs_bob` in the `Acme + Bubba` gameroom. This section explains how the
+new game request is handled.
+
+#### II-1.1. Acme client sends ‘create game’ request to Gameroom REST API
+
+1. When Alice clicks `Create` in the New Game screen, the Acme client creates an
+   XO transaction request payload for the creation request. (See
+   [Appendix D.2](#appendix-d2-xo-transaction-payload) for information about
+   the XO transaction request format.)
+
+    ```
+    alice_vs_bob,create,
+    ```
+
+2. The Acme client wraps this transaction request payload in a `sabre_payload`
+   message.
+
+    ```
+    ---
+    sabre_payload:
+     action: "EXECUTE_CONTRACT"
+     execute_contract:
+       name: xo
+       version: 0.3.3
+       inputs:
+         - 5b7349
+         - 00ec00
+         - 00ec01
+         - 00ec02
+       outputs:
+         - 5b7349
+       payload: b"alice_vs_bob,create,"
+    ```
+
+3. The Acme client bundles the Sabre payload into a batch, then serializes the
+   batch into an array of bytes. (For more information, see "Transactions and
+   Batches" in the
+   [Sawtooth Architecture](https://sawtooth.hyperledger.org/docs/core/releases/latest/architecture/transactions_and_batches.html)
+   documentation.)
+
+4. The Acme client sends the batch to the Acme Gameroom REST API.
+
+    ```
+    POST /gamerooms/<circuid_id>/batches
+    Content-Type: application/octet-stream
+
+    <bytes of the batch containing the Sabre XO transaction>
+    ```
+
+5. After the transaction is sent, the Acme Gameroom UI displays a spinner and
+   the message "Creating Game", which shows that the game is in a pending state.
+
+    ![]({% link
+      docs/0.4/examples/gameroom/walkthrough/images/bts_act2_scene1_1.png %}
+    "Pending new game")
+
+     This state continues until the UI is notified that the new game has been
+     committed to state (described in
+     [section II-1.6](#ii-16-gameroom-rest-apis-tell-clients-that-xo-game-is-committed)).
+
+#### II-1.2. Acme Gameroom REST API sends ‘create' transaction to Acme scabbard service
+
+The Acme gameroom daemon passes the serialized batch (which contains the XO
+transaction) to the Acme scabbard service, using the scabbard service's
+existing REST API route (as described in
+[section Ⅰ-6.6](#i-66-acme-gameroom-daemon-submits-sabre-transactions-to-add-xo-smart-contract),
+step 4).
+
+```
+POST /scabbard/<circuit_id>/<service_id>/batches
+
+<serialized batch>
+```
+
+#### II-1.3. Scabbard services use consensus to commit the new game
+
+When the Acme scabbard service receives this batch, it commits the batch using
+a similar process as adding the XO smart contract (described in
+[section Ⅰ-6.6](#i-66-acme-gameroom-daemon-submits-sabre-transactions-to-add-xo-smart-contract),
+step 5).
+
+1. The first steps are the same: The Acme scabbard service deserializes the
+   batch, then shares the batch with the Bubba Bakery scabbard service  so that
+   both nodes can use consensus to agree to commit the new game.
+
+2. Next, the scabbard services use the Sabre transaction handler to use the XO
+   smart contract to execute the transactions in the batch.
+
+3. The remaining steps are the same as before: After the nodes agree on state
+   using two-phase commit consensus, both scabbard services commit the new XO
+   game to scabbard state in their local database.
+
+#### II-1.4. Scabbard services use consensus to commit the new game
+
+After the new XO game has been committed to scabbard state, both scabbard
+services send the new XO game state to their gameroom daemon via a WebSocket
+connection.
+
+An XO game state is defined as a string of comma-separated values:
+
+```
+“<game-name>,<board-state>,<game-state>,<player1-key>,<player2-key>”
+```
+
+The message to the gameroom daemon looks like this:
+
+```
+{
+    “eventType”: “Set”,
+    “message”: {
+      “key”: “<xo game address>”,
+      “value”: b“alice_vs_bob,---------,P1-NEXT,,”
+      }
+}
+```
+
+Note that the values for `<player1-key>` and `<player2-key>` are empty. These
+fields are not set until a player makes the first move. (This is a design
+choice for the XO smart contract; it's not an inherent limitation of Splinter
+or the Gameroom application.)
+
+#### II-1.5. Gameroom daemons update gameroom status in database
+
+When a Gameroom daemon receives the message from its scabbard service, the
+daemon stores the state change in its local database.
+
+1. Because this is a new game, the Gameroom daemon creates a new entry in the
+   `xo_games` table in the database.
+
+   The `xo_games` table has this definition:
+
+   ``` sql
+   xo_games (
+     id                    	BIGSERIAL   	PRIMARY KEY,
+     circuit_id            	TEXT    	NOT NULL,
+     game_name             	TEXT    	NOT NULL,
+     player_1              	TEXT    	NOT NULL,
+     player_2              	TEXT    	NOT NULL,
+     game_status           	TEXT    	NOT NULL,
+     game_board            	TEXT    	NOT NULL,
+     created_time          	TIMESTAMP    NOT NULL,
+     updated_time          	TIMESTAMP    NOT NULL,
+     FOREIGN KEY (circuit_id) REFERENCES gameroom(circuit_id) ON DELETE CASCADE
+   );
+   ```
+
+   At the end of this operation, the `xo_games` table has the following entry:
+
+   <table class ="gameroom_db_table" border="1">
+     <tr class="gameroom_db_headers">
+       <th><code>id</code></th>
+       <th><code>circuit_id</code></th>
+       <th><code>game_name</code></th>
+       <th><code>player_1</code></th>
+       <th><code>player_2</code></th>
+     </tr>
+     <tr class="gameroom_db_data">
+       <td class="gameroom_placeholder"><code>auto generated id</code></td>
+       <td><code>01234-ABCDE</code></td>
+       <td><code>alice_vs_bob</code></td>
+       <td><code></code></td>
+       <td><code></code></td>
+     </tr>
+     <tr class="gameroom_db_headers">
+       <th><code>game_status</code></th>
+       <th><code>game_board</code></th>
+       <th><code>created_time</code></th>
+       <th><code>updated_time</code></th>
+     </tr>
+     <tr class="gameroom_db_data">
+       <td><code>P1-NEXT</code></td>
+       <td><code>---------</code></td>
+       <td class="gameroom_placeholder"><code>time entry was created</code></td>
+       <td class="gameroom_placeholder"><code>time entry was updated</code></td>
+     </tr>
+   </table>
+
+2. The gameroom daemon also adds a new notification to the
+   `gameroom_notification` table, which indicates that a new game was created.
+
+   <table class ="gameroom_db_table" border="1">
+     <tr class="gameroom_db_headers">
+       <th><code>id</code></th>
+       <th><code>notification_type</code></th>
+       <th><code>requester</code></th>
+       <th><code>requester_node_id</code></th>
+     </tr>
+     <tr class="gameroom_db_data">
+       <td class="gameroom_placeholder"><code>auto generated id</code></td>
+       <td><code>new_game_created:alice_vs_bob</code></td>
+       <td class="gameroom_placeholder"><code>Alice's public key</code></td>
+       <td><code>acme-node-000</code></td>
+     </tr>
+     <tr class="gameroom_db_headers">
+       <th><code>target</code></th>
+       <th><code>created_time</code></th>
+       <th><code>read</code></th>
+     </tr>
+     <tr>
+       <td><code>01234-ABCDE</code></td>
+       <td class="gameroom_placeholder"><code>time entry was created</code></td>
+       <td><code>f</code></td>
+     </tr>
+   </table>
+
+#### II-1.6. Gameroom REST APIs tell clients that XO game is committed
+
+1. After the Acme and Bubba Bakery Gameroom daemons fill in the
+  `gameroom_notification` tables, the Gameroom REST API uses a WebSocket
+  connection to tell each UI about the new notification.
+
+    ```
+    {
+      "namespace": "notifications",
+      "action": "listNotifications"
+    }
+    ```
+
+2. When the UI receives that message, it sends a request to the Gameroom REST
+   API to fetch a list of unread notifications from the database tables.
+
+    ```
+    GET /notifications
+    ```
+
+3. The Gameroom REST API responds with the list of unread notifications.
+
+    ```
+    {
+      "data": [
+        {
+          "id": <auto generated id>,
+          "notification_type": "new_game_created:alice_vs_bob",
+          "requester": <Alice’s public key>,
+          “node_id”: “acme-node-000”,
+              "target": "gameroom::acme-node-000::bubba-node-000::<UUIDv4>",
+              "timestamp": <time entry was created>,
+              "read": false
+        }
+      ],
+      "paging": {
+        "current": "api/notifications?limit=100&offset=0",
+        "offset": 0,
+        "limit": 100,
+        "total": 1,
+        "first": "api/notifications?limit=100&offset=0",
+        "prev": "api/notifications?limit=100&offset=0",
+        "next": "api/notifications?limit=100&offset=0",
+        "last": "api/notifications?limit=100&offset=0"
+      }
+    }
+    ```
+
+4. Once the UI receives this notification, it asks the Gameroom REST API to
+   fetch the list of games in the `Acme + Bubba` gameroom.
+
+    ```
+    GET /xo/01234-ABCDE/games
+    ```
+
+5. The Gameroom REST API responds with a list of games that includes the status
+   of each game. At this point, only the new `alice_vs_bob` game exists; no
+   moves have been made.
+
+    ```
+    {
+      "data": [
+        {
+        "circuit_id": "01234-ABCDE",
+        "game_name": "alice_vs_bob",
+        "player_1": "",
+        "player_2": "",
+        "game_status": "P1-NEXT",
+        "game_board": "---------",
+        "created_time": <time entry was created>,
+        "updated_time": <time entry was created>
+        }
+      ],
+      "paging": {
+        "current": "api/xo/01234-ABCDE/games?limit=100&offset=0",
+        "offset": 0,
+        "limit": 100,
+        "total": 0,
+        "first": "api/xo/01234-ABCDE/games?limit=100&offset=0",
+        "prev": "api/xo/01234-ABCDE/games?limit=100&offset=0",
+        "next": "api/xo/01234-ABCDE/games?limit=100&offset=0",
+        "last": "api/xo/01234-ABCDE/games?limit=100&offset=0"
+        }
+      }
+    ```
+
+6. The Acme Gameroom UI checks that the `alice_vs_bob` game is present in the
+   list of games received from the REST API.  Because the game is in the list,
+   the UI can now show the game in a "committed" state (ready to play because
+   the "create game" transaction has been committed).
+
+7. The Acme Gameroom UI replaces the spinner with a blank game board.
+
+    ![]({% link
+    docs/0.4/examples/gameroom/walkthrough/images/bts_act2_scene1_2.png %}
+    "Blank game board")
+
+    Alice can now click on the game board to start playing XO.
+
+### II-2. Behind scene 2: Alice makes the first move
+
+Each game move is handled the same way as the "create game" process described
+in [section II-1](#ii-1-behind-scene-1-alice-creates-a-new-xo-game). This
+section summarizes these steps.
+
+1. The Acme client submits the "take a space" transaction.
+
+    a. When Alice clicks the middle square in the XO board, the Acme client
+         creates an XO transaction request payload for taking the 5th
+         space. See [Appendix D.2](#appendix-d2-xo-transaction-payload)
+         for information on XO game moves and the game board.
+
+          ```
+          alice_vs_bob,take,5,
+          ```
+
+    b. As with game creation, the Acme client wraps this transaction request
+       payload in a `sabre_payload` message (see [section II-1.1](#ii-11-acme-client-sends-create-game-request-to-gameroom-rest-api),
+       step 2 for the message details).
+
+    c. The Acme client bundles the Sabre payload into a batch, then
+       serializes the batch into an array of bytes. (For more information,
+       see "Transactions and Batches" in the
+       [Sawtooth Architecture](https://sawtooth.hyperledger.org/docs/core/releases/latest/architecture/transactions_and_batches.html)
+       documentation.)
+
+    d. The Acme client posts the batch to the Acme Gameroom REST API (see
+       the details in [section II-1.1](#ii-11-acme-client-sends-create-game-request-to-gameroom-rest-api),
+       step 4).
+
+    e. After the transaction is sent, the Acme Gameroom UI displays a
+       spinner in the center square until it is notified that the game has
+       been updated in state.
+
+      ![]({% link
+      docs/0.4/examples/gameroom/walkthrough/images/bts_act2_scene2_1.png %}
+      "Updating game board square"){:height="100%" width="100%"}
+
+2. The Acme Gameroom REST API forwards the XO `take` transaction to the
+   scabbard service (see the details in
+   [section II-1.2](#ii-12-acme-gameroom-rest-api-sends-create-transaction-to-acme-scabbard-service)).
+
+3. The Acme and Bubba Bakery scabbard services use consensus (defined in
+   [Appendix B](#appendix-b-consensus)) to commit the move (as described in
+   [section II-1.3](#ii-13-scabbard-services-use-consensus-to-commit-the-new-game)).
+
+4. After Alice's first move has been committed to scabbard state, the scabbard
+   services send the new state to their gameroom daemons via a WebSocket
+   connection (as described in
+   [section II-1.4](#ii-14-scabbard-services-use-consensus-to-commit-the-new-game)).
+
+    This message includes an updated game board that has Alice's `X` in the
+    center square of the game board and Alice's public key in the `player1`
+    field.
+
+    ```
+    {
+      “eventType”: “Set”,
+      “message”: {
+        “key”: “<xo game address>”,
+        “value”: b“alice_vs_bob,----x----,P2-NEXT,<Alice’s public key>,”
+        }
+    }
+    ```
+
+    Note that the last field (the key for `player2`) is empty. That field
+    will be set when Bob makes his first move.
+
+5. When each Gameroom daemon receives the message, it updates the
+   `alice_vs_bob` entry in the `xo_games` table in the database (this entry was
+   created in
+   [section II-1.5](#ii-15-gameroom-daemons-update-gameroom-status-in-database)).
+
+    At the end of the operation, the `xo_games` table looks like this:
+
+    <table class ="gameroom_db_table" border="1">
+      <tr class="gameroom_db_headers">
+        <th><code>id</code></th>
+        <th><code>circuit_id</code></th>
+        <th><code>game_name</code></th>
+        <th><code>player_1</code></th>
+        <th><code>player_2</code></th>
+      </tr>
+      <tr class="gameroom_db_data">
+        <td class="gameroom_placeholder"><code>auto generated id</code></td>
+        <td><code>01234-ABCDE</code></td>
+        <td><code>alice_vs_bob</code></td>
+        <td class="gameroom_placeholder"><code>Alice's public key</code></td>
+        <td><code></code></td>
+      </tr>
+      <tr class="gameroom_db_headers">
+        <th><code>game_status</code></th>
+        <th><code>game_board</code></th>
+        <th><code>created_time</code></th>
+        <th><code>updated_time</code></th>
+      </tr>
+      <tr class="gameroom_db_data">
+        <td><code>P2-NEXT</code></td>
+        <td><code>----X----</code></td>
+        <td class="gameroom_placeholder"><code>time entry was created</code>
+        </td>
+        <td class="gameroom_placeholder"><code>time entry was updated</code>
+        </td>
+      </tr>
+    </table>
+
+    The gameroom daemon also adds a new notification to the
+    `gameroom_notification` table to indicate that the game was updated.
+
+    <table class ="gameroom_db_table" border="1">
+      <tr class="gameroom_db_headers">
+        <th><code>id</code></th>
+        <th><code>notification_type</code></th>
+        <th><code>requester</code></th>
+        <th><code>requester_node_id</code></th>
+      </tr>
+      <tr class="gameroom_db_data">
+        <td class="gameroom_placeholder"><code>auto generated id</code></td>
+        <td><code>game_updated:alice_vs_bob</code></td>
+        <td class="gameroom_placeholder"><code>Alice's public key</code></td>
+        <td><code>acme-node-000</code></td>
+      </tr>
+      <tr class="gameroom_db_headers">
+        <th><code>target</code></th>
+        <th><code>created_time</code></th>
+        <th><code>read</code></th>
+      </tr>
+      <tr>
+        <td><code>01234-ABCDE</code></td>
+        <td class="gameroom_placeholder"><code>time entry was created</code>
+        </td>
+        <td><code>f</code></td>
+      </tr>
+    </table>
+
+6. The Gameroom REST APIs tell the clients that Alice's move has been committed
+   and the XO game state has been updated. This process is the same as in
+   [section II-1.6](#ii-16-gameroom-rest-apis-tell-clients-that-xo-game-is-committed),
+   but the notification details contain information about Alice's move.
+
+    a. After the Acme Gameroom daemon handler fills in the
+       `gameroom_notification` table, the Acme Gameroom REST API uses a
+       WebSocket connection to tell the Acme UI about the new notification
+       (see the details in [section II-1.6](#ii-16-gameroom-rest-apis-tell-clients-that-xo-game-is-committed),
+       step 1).
+
+    b. When the Acme UI receives that message, it asks the Gameroom REST
+       API to fetch a list of unread notifications from the database tables
+       (using the  same `GET /notifications` request as in
+       [section II-1.6](#ii-16-gameroom-rest-apis-tell-clients-that-xo-game-is-committed),
+       step 2).
+
+    c. The Acme Gameroom REST API responds with the list of unread
+       notifications, as described in
+       [section II-1.6](#ii-16-gameroom-rest-apis-tell-clients-that-xo-game-is-committed),
+       step 3. At this point, however, the notification type is
+       `game_updated`.
+
+
+      ```
+      {
+        "data": [
+          {
+            "id": <auto generated id>,
+            "notification_type": "game_updated:alice_vs_bob",
+            "requester": <Alice’s public key>,
+            “node_id”: “acme-node-000”,
+            "target": "01234-ABCDE",
+            "timestamp": <time entry was created>,
+            "read": false
+          }
+        ],
+        "paging": {
+
+        … [SNIP] …
+
+        }
+      }
+      ```
+
+      d. Once the UI receives this notification, it sends a request to the
+         Acme Gameroom REST API to fetch the list of games in the
+         `Acme + Bubba` gameroom (using the same GET request as in
+         [section Ⅰ-6.6](#i-66-acme-gameroom-daemon-submits-sabre-transactions-to-add-xo-smart-contract),
+         step 4).
+
+      e. The Acme Gameroom REST API returns the list of games and game data.
+         At this point, the alice_vs_bob game data shows that Alice is
+         `player_1`,  `player_2` must move next, and Alice's `X` is in the
+         center square of the game board.
+
+      ```
+      {
+        "data": [
+          {
+            "circuit_id": "01234-ABCDE",
+            "game_name": "alice_vs_bob",
+            "player_1": "<Alice’s public key>",
+            "player_2": "",
+            "game_status": "P2-NEXT",
+            "game_board": "----x----",
+            "created_time": <time entry was created>,
+            "updated_time": <time entry was updated>
+          }
+        ],
+        "paging": {
+
+        … [SNIP] …
+
+        }
+      }
+      ```
+
+    f. The Acme Gameroom UI now shows that Alice’s move has been committed
+       by replacing the spinner in the center square with a red X.
+
+     ![]({% link
+     docs/0.4/examples/gameroom/walkthrough/images/bts_act2_scene2_2.png %}
+     "Red `X` front and center"){:height="35%" width="35%"}
+
+### II-3. Behind scene 3: Bob takes a turn
+
+In Act II, Scene 3, Bob notices his "new game" notification, clicks on it, and
+is redirected to the game page. The notification process is the same as in Act
+Ⅰ, section Ⅰ-3, when Bob saw Alice's invitation for the new gameroom. When Bob
+joins the game, the process is similar to Alice's first move in Act II, section
+II-2. This section summarizes the process and highlights the differences.
+
+1. The Bubba Bakery client gets a notification of a new game in the Acme +
+   Bubba gameroom (see the details in [section I-3.6](#i-36-bubba-bakery-ui-requests-list-of-gameroom-invitations))
+
+2. Bob checks his notifications as described in
+   [section Ⅰ-4](#i-4-behind-scene-4-bob-checks-his-notification).
+
+3. When Bob clicks on his "alice_vs_bob" game notification, he joins the XO
+   game with Alice.
+
+    a. The Bubba Bakery UI makes a call to the Gameroom REST API for the list of
+       existing games in the Acme + Bubba gameroom.
+
+      ```
+      GET /xo/<circuitID>/games
+      ```
+
+    b. The Bubba Bakery Gameroom REST API responds with a list of games. The
+       game data shows the status after Alice's first move, as described in
+       [section II-2](#ii-2-behind-scene-2-alice-makes-the-first-move), step 6e.
+
+      ```
+      {
+        "data": [
+          {
+            "circuit_id": "01234-ABCDE",
+            "game_name": "alice_vs_bob",
+            "player_1": "<Alice’s public key>",
+            "player_2": "",
+            "game_status": "P2-NEXT",
+            "game_board": "----x----",
+            "created_time": <time entry was created>,
+            "updated_time": <time entry was updated>
+          }
+        ],
+        "paging": {
+
+        … [SNIP] …
+
+        }
+      }
+      ```
+
+    c. The Bubba Bakery UI then displays the game board and related information
+       for the `alice_vs_bob` game. Bob sees Alice's `X` in the center square.
+
+      ![]({% link
+      docs/0.4/examples/gameroom/walkthrough/images/bts_act2_scene3_1.png %}
+      "Alice's move"){:height="100%" width="100%"}
+
+4. When Bob clicks the top right square on the XO board, the Bubba Bakery
+   client starts the process of handling his "take a square" request.
+
+    a. The Bubba Bakery client creates an XO transaction request payload for
+       taking the 3rd square.
+
+      ```
+      alice_vs_bob,take,3
+      ```
+
+    b. The Bubba Bakery client wraps this transaction request payload in a
+       `sabre_payload` message (as described in section [section II-1.1](#ii-11-acme-client-sends-create-game-request-to-gameroom-rest-api),
+       step 2), bundles the Sabre payload into a batch and serializes it (see
+       [section II-1.1](#ii-11-acme-client-sends-create-game-request-to-gameroom-rest-api),
+       step 3), then posts it to the Bubba Bakery Gameroom REST API (see
+       [section II-1.1](#ii-11-acme-client-sends-create-game-request-to-gameroom-rest-api),
+       step 4).
+
+       After the transaction is sent, the Bubba Gameroom UI displays a spinner
+       until it is notified that the game has been updated in state.
+
+       ![]({% link
+       docs/0.4/examples/gameroom/walkthrough/images/bts_act2_scene3_2.png %}
+       "Updating game board square"){:height="100%" width="100%"}
+
+5. The Bubba Bakery REST API forwards the XO ‘take’ transaction to the scabbard
+   service (see the details in [section II-1.2](#ii-12-acme-gameroom-rest-api-sends-create-transaction-to-acme-scabbard-service)).
+
+6. The Bubba Bakery and Acme scabbard services use consensus (defined in
+   [Appendix B](#appendix-b-consensus)) to commit the move, as described in
+    [section II-1.3](#ii-13-scabbard-services-use-consensus-to-commit-the-new-game).
+   For Bob's move, Bubba Bakery's scabbard service starts the process.
+
+7. After Bob's move has been committed to scabbard state, the scabbard services
+   send the new state to the gameroom daemon via a WebSocket connection (as
+   described in [section II-1.4](#ii-14-scabbard-services-use-consensus-to-commit-the-new-game)).
+
+    This message includes an updated game board that has Bob's `O` in the top
+    right square (3rd space) of the game board and Bob's public key in the
+    `player_2` field.
+
+    ```
+    {
+      “eventType”: “Set”,
+      “message”: {
+        “key”: “<xo game address>”,
+        “value”: b“alice_vs_bob,--o-x----,P2-NEXT,<Alice’s public key>,<Bob’s public key>”
+      }
+    }
+    ```
+
+8. When each Gameroom daemon receives the message, it updates the `alice_vs_bob`
+   entry in the `xo_games` table in the database (this entry was created in
+   [section II-1.5](#ii-15-gameroom-daemons-update-gameroom-status-in-database)).
+
+    At the end of the operation, the `xo_games` table looks like this:
+
+    <table class ="gameroom_db_table" border="1">
+     <tr class="gameroom_db_headers">
+       <th><code>id</code></th>
+       <th><code>circuit_id</code></th>
+       <th><code>game_name</code></th>
+       <th><code>player_1</code></th>
+       <th><code>player_2</code></th>
+     </tr>
+     <tr class="gameroom_db_data">
+       <td class="gameroom_placeholder"><code>auto generated id</code></td>
+       <td><code>01234-ABCDE</code></td>
+       <td><code>alice_vs_bob</code></td>
+       <td class="gameroom_placeholder"><code>Alice's public key</code></td>
+       <td class="gameroom_placeholder"><code>Bob's public key</code></td>
+     </tr>
+     <tr class="gameroom_db_headers">
+       <th><code>game_status</code></th>
+       <th><code>game_board</code></th>
+       <th><code>created_time</code></th>
+       <th><code>updated_time</code></th>
+     </tr>
+     <tr class="gameroom_db_data">
+       <td><code>P1-NEXT</code></td>
+       <td><code>--O-X----</code></td>
+       <td class="gameroom_placeholder"><code>time entry was created</code></td>
+       <td class="gameroom_placeholder"><code>time entry was updated</code></td>
+     </tr>
+    </table>
+
+    As with Alice's first move, the gameroom daemon also adds a "game updated"
+    notification to the `gameroom_notification` table (see
+    [section II-2](#ii-2-behind-scene-2-alice-makes-the-first-move), step 5).
+
+9. The Gameroom REST APIs notify the Gameroom daemons that the XO game’s state
+   has been updated. This process is the same as for Alice's first move (see
+   [section II-2](#ii-2-behind-scene-2-alice-makes-the-first-move),
+   step 6), but the notification details contain information about Bob's move.
+
+    When the Gameroom REST APIs return the list of games and game data, the
+    `alice_vs_bob` game data shows that Bob is `player_2`, Alice has the next
+    move, and each player has made one move on the game board.
+
+      ```
+      {
+         "data": [
+              {
+                 "circuit_id": "01234-ABCDE",
+                 "game_name": "alice_vs_bob",
+                 "player_1": "<Alice’s public key>",
+                 "player_2": "<Bob’s public key>",
+                 "game_status": "P1-NEXT",
+                 "game_board": "--o-x----",
+                 "created_time": <time entry was created>,
+                 "updated_time": <time entry was updated>
+             }
+         ],
+         "paging": {
+
+           … [SNIP] …
+
+         }
+      }
+      ```
+
+10. The Bubba Bakery UI now shows that Bob's move has been committed by
+    replacing the spinner in the upper right corner with a blue `O`.
+
+![]({% link
+docs/0.4/examples/gameroom/walkthrough/images/bts_act2_scene3_3.png %}
+"Bob's move"){:height="35%" width="35%"}
+
+### II-4. Behind Scene 4: Alice wins the game
+
+After each move in the XO game, the XO smart contract checks the current game
+state to determine if the move resulted in a win or a tie. If not, the game
+state is updated to show which player moves next. (See
+[Appendix D](#appendix-d-xo-smart-contract-specification) for the XO execution
+rules and game state values.)
+
+1. Before Alice's last move, the `xo_games` table in the database looks like
+   this:
+
+    <table class ="gameroom_db_table" border="1">
+      <tr class="gameroom_db_headers">
+        <th><code>id</code></th>
+        <th><code>circuit_id</code></th>
+        <th><code>game_name</code></th>
+        <th><code>player_1</code></th>
+        <th><code>player_2</code></th>
+      </tr>
+      <tr class="gameroom_db_data">
+        <td class="gameroom_placeholder"><code>auto generated id</code></td>
+        <td><code>01234-ABCDE</code></td>
+        <td><code>alice_vs_bob</code></td>
+        <td class="gameroom_placeholder"><code>Alice's public key</code></td>
+        <td class="gameroom_placeholder"><code>Bob's public key</code></td>
+      </tr>
+      <tr class="gameroom_db_headers">
+        <th><code>game_status</code></th>
+        <th><code>game_board</code></th>
+        <th><code>created_time</code></th>
+        <th><code>updated_time</code></th>
+      </tr>
+      <tr class="gameroom_db_data">
+        <td><code>P1-NEXT</code></td>
+        <td><code>O-O-XOX-X</code></td>
+        <td class="gameroom_placeholder"><code>time entry was created</code></td>
+        <td class="gameroom_placeholder"><code>time entry was updated</code></td>
+      </tr>
+    </table>
+
+    After Alice clicks the winning spot, the move is approved and committed to
+    state, and the Gameroom daemons update the game state. Now, the `xo_games`
+    table in the database looks like this:
+
+    <table class ="gameroom_db_table" border="1">
+      <tr class="gameroom_db_headers">
+        <th><code>id</code></th>
+        <th><code>circuit_id</code></th>
+        <th><code>game_name</code></th>
+        <th><code>player_1</code></th>
+        <th><code>player_2</code></th>
+      </tr>
+      <tr class="gameroom_db_data">
+        <td class="gameroom_placeholder"><code>auto generated id</code></td>
+        <td><code>01234-ABCDE</code></td>
+        <td><code>alice_vs_bob</code></td>
+        <td class="gameroom_placeholder"><code>Alice's public key</code></td>
+        <td class="gameroom_placeholder"><code>Bob's public key</code></td>
+      </tr>
+      <tr class="gameroom_db_headers">
+        <th><code>game_status</code></th>
+        <th><code>game_board</code></th>
+        <th><code>created_time</code></th>
+        <th><code>updated_time</code></th>
+      </tr>
+      <tr class="gameroom_db_data">
+        <td><code>P1-WIN</code></td>
+        <td><code>O-O-XOXXX</code></td>
+        <td class="gameroom_placeholder"><code>time entry was created</code>
+        </td>
+        <td class="gameroom_placeholder"><code>time entry was updated</code>
+        </td>
+      </tr>
+    </table>
+
+    The `P1-WIN` game status means that neither player can make any more moves.
+
+2. Each Gameroom daemon receives the notification of the game state change, as
+   described for Alice's first move (see [section II-2](#ii-2-behind-scene-2-alice-makes-the-first-move))
+   and Bob's first turn (see
+   [section II-3](#ii-3-behind-scene-3-bob-takes-a-turn)).
+
+3. Each Gameroom daemon notifies the Gameroom UI to update the game board with
+   Alice's winning move on the game board, as described in those earlier
+   sections.
+
+    The Acme UI shows a green row to indicate that Alice has won. The Bubba
+    Bakery UI shows the row in red to let Bob know that he has lost.
+
+
+  ![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/bts_act2_scene4_1.png %}
+  "Winning ACME board"){:height="100%" width="100%"}
+
+  ![]({% link
+  docs/0.4/examples/gameroom/walkthrough/images/bts_act2_scene4_2.png %}
+  "Winning Bubba Bakery board"){:height="100%" width="100%"}
+
 ## Act 3: Alice creates gamerooms with Yoda and Zixi
 
 ### Scene 1: The ketchup packet
